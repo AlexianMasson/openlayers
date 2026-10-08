@@ -37,6 +37,9 @@ import BaseTileLayer from './BaseTile.js';
  * an expression). These variables can be used as {@link import("../expr/expression.js").ExpressionValue expressions} in the styles properties
  * using the `['var', 'varName']` operator.
  * To update style variables, use the {@link import("./WebGLVector.js").default#updateStyleVariables} method.
+ * Note that a variable used in a *text* property is only read when the layer's render buffers are
+ * rebuilt (i.e. when the extent or the source changes), so an `updateStyleVariables` call is not
+ * immediately reflected in labels.
  * @property {import("./Base.js").BackgroundColor} [background] Background color for the layer. If not specified, no background
  * will be rendered.
  * FIXME: not supported yet

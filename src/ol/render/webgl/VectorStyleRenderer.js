@@ -205,6 +205,13 @@ class VectorStyleRenderer extends Disposable {
     this.flatStyle = toFlatStyleLike(styles);
 
     /**
+     * Passed to the text overlay worker, which evaluates `var` in text properties.
+     * @type {import('../../style/flat.js').StyleVariables}
+     * @private
+     */
+    this.variables_ = variables;
+
+    /**
      * @type {Array<StyleShaders>}
      * @private
      */
@@ -671,6 +678,7 @@ class VectorStyleRenderer extends Disposable {
       pointRenderInstructions: pointRenderInstructions ?? undefined,
       labelsArray: labelsArray.getArray(),
       style: this.flatStyle ?? undefined,
+      variables: this.variables_,
       customAttributesSizes,
       renderInstructionsTransform: transform,
       resolution,

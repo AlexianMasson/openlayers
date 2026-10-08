@@ -162,6 +162,7 @@ worker.onmessage = (/** @type {MessageEvent} */ event) => {
         lineStringRenderInstructions,
         pointRenderInstructions,
         style,
+        variables,
         customAttributesSizes,
         renderInstructionsTransform,
         id,
@@ -185,7 +186,7 @@ worker.onmessage = (/** @type {MessageEvent} */ event) => {
         {},
       );
 
-      const parsingContext = newParsingContext();
+      const parsingContext = newParsingContext(variables);
       stripNonTextStyleProperties(style);
       const styleFn = flatStyleLikeToStyleFunction(style, parsingContext);
 

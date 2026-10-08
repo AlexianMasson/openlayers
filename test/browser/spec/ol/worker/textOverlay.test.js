@@ -206,6 +206,66 @@ describe('ol/worker/textOverlay', () => {
         assert.strictEqual(new Set(keys).size, 4);
       });
 
+      /** @type {import('../../../../../src/ol/style/flat.js').FlatStyleLike} */
+      const styleWithVariable = {
+        'text-align': 'center',
+        'text-baseline': 'middle',
+        'text-font': '10px sans-serif',
+        'text-value': ['var', 'label'],
+      };
+
+      /**
+       * @param {import('../../../../../src/ol/style/flat.js').StyleVariables} variables Style variables.
+       * @return {Promise<ImageBitmap>} The rendered text overlay.
+       */
+      async function renderWithVariables(variables) {
+        geomBatch.addFeature(
+          new Feature({
+            geometry: new Point([0, 0]),
+            name: 'xxx',
+          }),
+        );
+        const pointRenderInstructions = generatePointRenderInstructions(
+          geomBatch.pointBatch,
+          new Float32Array(0),
+          labelsArray,
+          customAttributes,
+          transform,
+        );
+        let response = await postWorkerMessage(
+          {
+            type: TextOverlayWorkerMessageType.BUILD_INSTRUCTIONS,
+            labelsArray: labelsArray.getArray(),
+            polygonRenderInstructions: new Float32Array(),
+            lineStringRenderInstructions: new Float32Array(),
+            pointRenderInstructions,
+            style: styleWithVariable,
+            variables,
+            customAttributesSizes,
+            renderInstructionsTransform: transform,
+            resolution: frameState.viewState.resolution,
+          },
+          [labelsArray.getArray().buffer, pointRenderInstructions.buffer],
+        );
+
+        response = await postWorkerMessage({
+          type: TextOverlayWorkerMessageType.RENDER,
+          frameState,
+          batchesToRender: new Set([response.instructionsSetKey]),
+        });
+        return response.imageData;
+      }
+
+      it('evaluates the var operator in text properties', async () => {
+        const imageData = await renderWithVariables({label: 'xxx'});
+        assert.strictEqual(areAllPixelsTransparent(imageData), false);
+      });
+
+      it('draws nothing when a text variable is empty', async () => {
+        const imageData = await renderWithVariables({label: ''});
+        assert.strictEqual(areAllPixelsTransparent(imageData), true);
+      });
+
       it('does not draw anything if the style is only a circle', async () => {
         geomBatch.addFeature(
           new Feature({

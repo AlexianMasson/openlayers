@@ -49,6 +49,8 @@ export const TextOverlayWorkerMessageType = {
  * @property {import("../../Map.js").FrameState} [frameState] Frame state of the rendered image
  * @property {string} [instructionsSetKey] Key corresponding to a generated text instructions set
  * @property {import('../../style/flat.js').FlatStyleLike} [style] Flat style
+ * @property {import('../../style/flat.js').StyleVariables} [variables] Style variables, for the
+ * `['var', 'varName']` operator in text properties
  * @property {Uint8Array} [labelsArray] Labels array
  * @property {Object<string, number>} [customAttributesSizes] Size of each custom attribute (by name)
  * @property {import("../../transform.js").Transform} [renderInstructionsTransform] Transformation matrix used to project the instructions coordinates
