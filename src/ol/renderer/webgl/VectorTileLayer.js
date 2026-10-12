@@ -293,14 +293,12 @@ class WebGLVectorTileLayerRenderer extends WebGLBaseTileLayerRenderer {
         this.styleRenderer_
       ),
     );
-    // redraw the layer when the tile is ready
-    const listener = () => {
+    // redraw the layer when the tile is ready, including after its buffers were regenerated
+    tileRep.addEventListener(EventType.CHANGE, () => {
       if (tileRep.ready) {
-        this.getLayer().changed();
-        tileRep.removeEventListener(EventType.CHANGE, listener);
+        this.getLayer()?.changed();
       }
-    };
-    tileRep.addEventListener(EventType.CHANGE, listener);
+    });
     return tileRep;
   }
 
@@ -318,6 +316,8 @@ class WebGLVectorTileLayerRenderer extends WebGLBaseTileLayerRenderer {
     if (layerChanged) {
       this.skipNextTextRender_ = false;
     }
+
+    this.styleRenderer_?.updateTextVariablesRevision();
 
     this.helper.makeProjectionTransform(
       frameState,
@@ -485,6 +485,17 @@ class WebGLVectorTileLayerRenderer extends WebGLBaseTileLayerRenderer {
     const buffers = tileRepresentation.buffers;
     if (!buffers) {
       return;
+    }
+    // the outdated labels are rendered until the tile buffers are regenerated,
+    // and the layer is not ready in the meantime
+    if (
+      tileRepresentation.textVariablesRevision !==
+      styleRenderer.getTextVariablesRevision()
+    ) {
+      tileRepresentation.uploadTile();
+    }
+    if (tileRepresentation.isGeneratingBuffers()) {
+      this.ready = false;
     }
     styleRenderer.render(buffers, frameState, () => {
       this.applyUniforms_(

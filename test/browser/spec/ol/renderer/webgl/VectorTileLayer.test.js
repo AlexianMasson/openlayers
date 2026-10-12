@@ -410,6 +410,11 @@ describe('ol/renderer/webgl/VectorTileLayer', function () {
       tileRepresentation.setReady();
       assert.strictEqual(vectorTileLayer.changed.mock.calls.length, 1);
     });
+    it('triggers a redraw of the layer each time the tile representation becomes ready again', () => {
+      tileRepresentation.setReady();
+      tileRepresentation.setReady();
+      assert.strictEqual(vectorTileLayer.changed.mock.calls.length, 2);
+    });
   });
 
   describe('ready state', () => {
@@ -456,6 +461,86 @@ describe('ol/renderer/webgl/VectorTileLayer', function () {
       renderer.tileRepresentationCache.forEach((rep) => {
         assert.strictEqual(rep.helper, renderer.helper);
       });
+    });
+  });
+
+  describe('style variables used in text', () => {
+    let variables;
+    let renderedTiles;
+    beforeEach(async () => {
+      renderer.dispose();
+      variables = {label: 'hello', fillColor: 'red'};
+      renderer = new WebGLVectorTileLayerRenderer(vectorTileLayer, {
+        style: {
+          'fill-color': ['var', 'fillColor'],
+          'text-value': ['var', 'label'],
+        },
+        variables,
+      });
+      renderer.prepareFrame(frameState);
+      renderer.renderFrame(frameState);
+      frameState.tileQueue.loadMoreTiles(Infinity, Infinity);
+      await vi.waitFor(() => {
+        let ready = 0;
+        renderer.tileRepresentationCache.forEach((rep) => {
+          if (rep.ready) {
+            ready++;
+          }
+        });
+        assert.isAbove(ready, 0);
+      });
+      renderedTiles = [];
+      renderer.tileRepresentationCache.forEach((rep) => {
+        if (rep.ready) {
+          vi.spyOn(rep, 'uploadTile');
+          renderedTiles.push(rep);
+        }
+      });
+    });
+
+    it('does not regenerate the tile buffers on every frame after the helper is recreated', () => {
+      variables.label = 'world';
+      renderer.renderFrame(frameState);
+      renderer.removeHelper();
+      renderer.prepareFrame(frameState);
+      for (const rep of renderedTiles) {
+        rep.uploadTile.mockClear();
+      }
+      renderer.renderFrame(frameState);
+      renderer.renderFrame(frameState);
+      for (const rep of renderedTiles) {
+        assert.strictEqual(rep.uploadTile.mock.calls.length, 0);
+      }
+    });
+
+    it('regenerates the buffers of rendered tiles once when a text variable changes', () => {
+      variables.label = 'world';
+      renderer.renderFrame(frameState);
+      renderer.renderFrame(frameState);
+      for (const rep of renderedTiles) {
+        assert.strictEqual(rep.uploadTile.mock.calls.length, 1);
+      }
+    });
+    it('is not ready until the tile buffers are regenerated', async () => {
+      variables.label = 'world';
+      renderer.prepareFrame(frameState);
+      renderer.renderFrame(frameState);
+      assert.isFalse(renderer.ready);
+      await vi.waitFor(() => {
+        for (const rep of renderedTiles) {
+          assert.isFalse(rep.isGeneratingBuffers());
+        }
+      });
+      renderer.prepareFrame(frameState);
+      renderer.renderFrame(frameState);
+      assert.isTrue(renderer.ready);
+    });
+    it('does not regenerate tile buffers when another variable changes', () => {
+      variables.fillColor = 'blue';
+      renderer.renderFrame(frameState);
+      for (const rep of renderedTiles) {
+        assert.strictEqual(rep.uploadTile.mock.calls.length, 0);
+      }
     });
   });
 

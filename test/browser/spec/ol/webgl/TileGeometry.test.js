@@ -18,6 +18,8 @@ class MockRenderer {
   );
   endGenerate_ = null;
   disposeTextInstructions = vi.fn();
+  textVariablesRevision = 0;
+  getTextVariablesRevision = vi.fn(() => this.textVariablesRevision);
 }
 
 describe('ol/webgl/TileGeometry', function () {
@@ -149,6 +151,20 @@ describe('ol/webgl/TileGeometry', function () {
         tileGeometry.maskVertices.getArray(),
         [0, 0, 400, 0, 400, 600, 0, 600],
       );
+    });
+
+    it('tells whether buffers are being generated', async () => {
+      assert.isTrue(tileGeometry.isGeneratingBuffers());
+      styleRenderer.endGenerate_({});
+      await new Promise((resolve) => setTimeout(resolve));
+      assert.isFalse(tileGeometry.isGeneratingBuffers());
+    });
+
+    it('records the text variables revision used to generate the buffers', () => {
+      assert.strictEqual(tileGeometry.textVariablesRevision, 0);
+      styleRenderer.textVariablesRevision = 2;
+      tileGeometry.uploadTile();
+      assert.strictEqual(tileGeometry.textVariablesRevision, 2);
     });
 
     describe('buffers regenerated', () => {

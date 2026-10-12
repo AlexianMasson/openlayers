@@ -42,6 +42,19 @@ class TileGeometry extends BaseTileRepresentation {
     this.buffers = null;
 
     /**
+     * Text variables revision of the style renderer when the buffers were generated
+     * @type {number}
+     */
+    this.textVariablesRevision = 0;
+
+    /**
+     * Number of buffer generations in progress
+     * @type {number}
+     * @private
+     */
+    this.pendingGenerations_ = 0;
+
+    /**
      * Each geometry tile also has a mask which consisted of a quad (two triangles); this mask is intended to
      * be rendered to an offscreen buffer, and be used to correctly mask tiles according to their zoom level
      * during rendering; these coordinates are expressed in the same coordinate system as the tile geometries
@@ -85,6 +98,7 @@ class TileGeometry extends BaseTileRepresentation {
       return;
     }
     this.generateMaskBuffer_();
+    this.textVariablesRevision = this.styleRenderer_.getTextVariablesRevision();
 
     this.batch_.clear();
     const sourceTiles = this.tile.getSourceTiles();
@@ -118,9 +132,11 @@ class TileGeometry extends BaseTileRepresentation {
 
     this.batch_.addFeatures(features);
 
+    this.pendingGenerations_++;
     this.styleRenderer_
       .generateBuffers(this.batch_, transform, this.wantedResolution)
       .then((buffers) => {
+        this.pendingGenerations_--;
         // the previous buffers are kept until the new ones are ready, e.g. when the tile is uploaded again
         if (this.buffers) {
           this.disposeBuffers_(this.buffers);
@@ -128,6 +144,13 @@ class TileGeometry extends BaseTileRepresentation {
         this.buffers = buffers;
         this.setReady();
       });
+  }
+
+  /**
+   * @return {boolean} Whether buffers are being generated, e.g. to replace outdated ones
+   */
+  isGeneratingBuffers() {
+    return this.pendingGenerations_ > 0;
   }
 
   /**
