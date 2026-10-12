@@ -498,6 +498,58 @@ describe('ol/renderer/webgl/VectorLayer', () => {
     });
   });
 
+  describe('style variables used in text', () => {
+    let variables;
+    beforeEach(() => {
+      renderer.dispose();
+      variables = {label: 'hello', fillColor: 'red'};
+      renderer = new WebGLVectorLayerRenderer(vectorLayer, {
+        style: {
+          'fill-color': ['var', 'fillColor'],
+          'text-value': ['var', 'label'],
+        },
+        variables,
+      });
+      renderer.prepareFrame(frameState);
+      vi.spyOn(renderer.styleRenderer_, 'generateBuffers').mockClear();
+    });
+
+    it('regenerates the buffers when a text variable changes', () => {
+      variables.label = 'world';
+      renderer.prepareFrame(frameState);
+      assert.strictEqual(
+        renderer.styleRenderer_.generateBuffers.mock.calls.length,
+        1,
+      );
+      renderer.prepareFrame(frameState);
+      assert.strictEqual(
+        renderer.styleRenderer_.generateBuffers.mock.calls.length,
+        1,
+      );
+    });
+    it('does not regenerate the buffers when another variable changes', () => {
+      variables.fillColor = 'blue';
+      renderer.prepareFrame(frameState);
+      assert.strictEqual(
+        renderer.styleRenderer_.generateBuffers.mock.calls.length,
+        0,
+      );
+    });
+    it('waits for the view to stop moving before regenerating the buffers', () => {
+      variables.label = 'world';
+      renderer.prepareFrame({...frameState, viewHints: [0, 1]});
+      assert.strictEqual(
+        renderer.styleRenderer_.generateBuffers.mock.calls.length,
+        0,
+      );
+      renderer.prepareFrame(frameState);
+      assert.strictEqual(
+        renderer.styleRenderer_.generateBuffers.mock.calls.length,
+        1,
+      );
+    });
+  });
+
   describe('#renderFrame', () => {
     const withHit = 2;
     let newFrameState;

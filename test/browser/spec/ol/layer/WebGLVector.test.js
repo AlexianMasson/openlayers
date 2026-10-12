@@ -1,8 +1,11 @@
 import {assert} from 'chai';
+import Feature from '../../../../../src/ol/Feature.js';
 import Map from '../../../../../src/ol/Map.js';
 import View from '../../../../../src/ol/View.js';
+import Point from '../../../../../src/ol/geom/Point.js';
 import WebGLVectorLayer from '../../../../../src/ol/layer/WebGLVector.js';
 import {getRenderPixel} from '../../../../../src/ol/render.js';
+import {TextOverlayWorkerMessageType} from '../../../../../src/ol/render/webgl/constants.js';
 import WebGLVectorLayerRenderer from '../../../../../src/ol/renderer/webgl/VectorLayer.js';
 import VectorSource from '../../../../../src/ol/source/Vector.js';
 
@@ -110,6 +113,36 @@ describe('ol/layer/WebGLVector', function () {
 
       layer.updateStyleVariables({foo: 'bam'});
       assert.strictEqual(layer.styleVariables_.foo, 'bam');
+    });
+
+    it('sends the new variables to the text worker', async () => {
+      const textLayer = new WebGLVectorLayer({
+        source: new VectorSource({
+          features: [new Feature(new Point([0, 0]))],
+        }),
+        style: {
+          'text-value': ['var', 'label'],
+          'text-font': '10px sans-serif',
+        },
+        variables: {label: 'hello'},
+      });
+      map.addLayer(textLayer);
+      await new Promise((resolve) => map.once('rendercomplete', resolve));
+
+      const worker =
+        await textLayer.getRenderer().styleRenderer_.textOverlayWorker_;
+      const spy = vi.spyOn(worker, 'postMessage');
+      textLayer.updateStyleVariables({label: 'world'});
+
+      await vi.waitFor(() => {
+        const build = spy.mock.calls
+          .map((call) => call[0])
+          .find(
+            (message) =>
+              message.type === TextOverlayWorkerMessageType.BUILD_INSTRUCTIONS,
+          );
+        assert.strictEqual(build?.variables.label, 'world');
+      });
     });
   });
 

@@ -118,6 +118,12 @@ class WebGLVectorLayerRenderer extends WebGLLayerRenderer {
     this.layerRevision_ = -1;
 
     /**
+     * Text variables revision of the last buffers generation
+     * @private
+     */
+    this.textVariablesRevision_ = 0;
+
+    /**
      * @private
      */
     this.skipNextTextRender_ = false;
@@ -290,6 +296,7 @@ class WebGLVectorLayerRenderer extends WebGLLayerRenderer {
    */
   createRenderers_() {
     this.buffers_ = null;
+    this.textVariablesRevision_ = 0;
     this.styleRenderer_ = new VectorStyleRenderer(
       this.style_,
       this.styleVariables_,
@@ -466,6 +473,11 @@ class WebGLVectorLayerRenderer extends WebGLLayerRenderer {
     const extentChanged = !equals(this.previousExtent_, frameExtent);
     const sourceChanged = this.sourceRevision_ < vectorSource.getRevision();
     const layerChanged = this.layerRevision_ < layer.getRevision();
+    this.styleRenderer_?.updateTextVariablesRevision();
+    const textVariablesRevision =
+      this.styleRenderer_?.getTextVariablesRevision() ?? 0;
+    const textVariablesChanged =
+      this.textVariablesRevision_ !== textVariablesRevision;
 
     this.sourceRevision_ = vectorSource.getRevision();
     this.layerRevision_ = layer.getRevision();
@@ -475,7 +487,10 @@ class WebGLVectorLayerRenderer extends WebGLLayerRenderer {
       this.skipNextTextRender_ = false;
     }
 
-    if (viewNotMoving && (extentChanged || sourceChanged)) {
+    if (
+      viewNotMoving &&
+      (extentChanged || sourceChanged || textVariablesChanged)
+    ) {
       const projection = viewState.projection;
       const resolution = viewState.resolution;
 
@@ -523,6 +538,7 @@ class WebGLVectorLayerRenderer extends WebGLLayerRenderer {
         });
 
       this.previousExtent_ = frameExtent.slice();
+      this.textVariablesRevision_ = textVariablesRevision;
     }
 
     return true;
