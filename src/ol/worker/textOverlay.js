@@ -49,6 +49,11 @@ const renderBatches = new Map();
 const tmpTransform = createTransform();
 
 /**
+ * Used to give a unique key to each instructions set
+ */
+let instructionsSetCounter = 0;
+
+/**
  * @param {import('../coordinate.js').Coordinate} center Center.
  * @param {number} resolution Resolution.
  * @param {number} rotation Rotation.
@@ -166,7 +171,7 @@ worker.onmessage = (/** @type {MessageEvent} */ event) => {
       // we compute the resolution in the render instructions frame of reference by using the scale X component
       const resolutionInRenderInstructionsTransform =
         resolution * renderInstructionsTransform[0];
-      const instructionsSetKey = Date.now().toString();
+      const instructionsSetKey = (++instructionsSetCounter).toString();
       const labelsArray = new Uint8Array(received.labelsArray);
       const builder = new TextBuilder(
         1,
