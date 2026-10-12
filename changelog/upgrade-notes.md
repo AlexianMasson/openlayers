@@ -2,6 +2,10 @@
 
 ### Next release
 
+#### Vector layers no longer store `variables` as a property
+
+The `Vector`, `VectorImage`, `VectorTile` and `Heatmap` layers now use the `variables` option as style variables, for the `['var', 'name']` operator in flat styles. It is no longer set as an observable layer property, so `layer.get('variables')` now returns `undefined`. Use `layer.updateStyleVariables()` to change the variables.
+
 ### 10.11.0
 
 #### Fixed GeoJSON parsing of geometries with empty coordinate arrays
