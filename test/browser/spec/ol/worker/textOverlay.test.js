@@ -187,6 +187,25 @@ describe('ol/worker/textOverlay', () => {
         assert.strictEqual(areAllPixelsTransparent(response.imageData), false);
       });
 
+      it('sends back a different batch id for each instructions set, even when built back to back', async () => {
+        const keys = await Promise.all(
+          [0, 1, 2, 3].map(() =>
+            postWorkerMessage({
+              type: TextOverlayWorkerMessageType.BUILD_INSTRUCTIONS,
+              labelsArray: new Uint8Array(),
+              polygonRenderInstructions: new Float32Array(),
+              lineStringRenderInstructions: new Float32Array(),
+              pointRenderInstructions: new Float32Array(),
+              style,
+              customAttributesSizes,
+              renderInstructionsTransform: transform,
+              resolution: frameState.viewState.resolution,
+            }).then((response) => response.instructionsSetKey),
+          ),
+        );
+        assert.strictEqual(new Set(keys).size, 4);
+      });
+
       it('does not draw anything if the style is only a circle', async () => {
         geomBatch.addFeature(
           new Feature({
