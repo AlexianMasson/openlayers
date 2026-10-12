@@ -2,6 +2,7 @@
  * @module ol/render/webgl/VectorStyleRenderer
  */
 import Disposable from '../../Disposable.js';
+import {equals as arrayEquals} from '../../array.js';
 import {createCanvasContext2D} from '../../dom.js';
 import {
   create as createTransform,
@@ -25,7 +26,7 @@ import {
 } from './renderinstructions.js';
 import {serializeFrameState} from './serialize.js';
 import {parseLiteralStyle} from './style.js';
-import {hasTextStyle} from './textUtil.js';
+import {getTextStyleVariables, hasTextStyle} from './textUtil.js';
 
 const tmpColor = /** @type {Array<number>} */ ([]);
 
@@ -393,6 +394,32 @@ class VectorStyleRenderer extends Disposable {
     this.hasStroke_ = this.renderPasses_.some((pass) => pass.strokeRenderPass);
     this.hasSymbol_ = this.renderPasses_.some((pass) => pass.symbolRenderPass);
     this.hasText_ = this.flatStyle && hasTextStyle(this.flatStyle);
+
+    /**
+     * Names of the variables read when building text instructions
+     * @type {Array<string>}
+     * @private
+     */
+    this.textVariableNames_ = this.hasText_
+      ? Array.from(
+          getTextStyleVariables(/** @type {FlatStyleLike} */ (this.flatStyle)),
+        )
+      : [];
+
+    /**
+     * Values of the text variables as of the current revision
+     * @type {import('../../style/flat.js').StyleVariables}
+     * @private
+     */
+    this.textVariableValues_ = {};
+
+    /**
+     * @type {number}
+     * @private
+     */
+    this.textVariablesRevision_ = 0;
+
+    this.updateTextVariableValues_();
 
     if (this.hasText_) {
       /**
@@ -913,6 +940,46 @@ class VectorStyleRenderer extends Disposable {
         this.helper_.flushBufferData(buffers.pointBuffers[2]);
       }
     }
+  }
+
+  /**
+   * @private
+   */
+  updateTextVariableValues_() {
+    for (const name of this.textVariableNames_) {
+      const value = this.variables_[name];
+      this.textVariableValues_[name] = Array.isArray(value)
+        ? value.slice()
+        : value;
+    }
+  }
+
+  /**
+   * Increments the text variables revision if a variable read when building text instructions
+   * changed value since the last call.
+   */
+  updateTextVariablesRevision() {
+    for (const name of this.textVariableNames_) {
+      const value = this.variables_[name];
+      const previous = this.textVariableValues_[name];
+      const changed =
+        Array.isArray(value) && Array.isArray(previous)
+          ? !arrayEquals(value, previous)
+          : value !== previous;
+      if (changed) {
+        this.updateTextVariableValues_();
+        this.textVariablesRevision_++;
+        return;
+      }
+    }
+  }
+
+  /**
+   * Text instructions built with an older revision are outdated; see `updateTextVariablesRevision`.
+   * @return {number} Text variables revision
+   */
+  getTextVariablesRevision() {
+    return this.textVariablesRevision_;
   }
 
   getTextOverlayCanvas() {

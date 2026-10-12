@@ -964,6 +964,66 @@ describe('VectorStyleRenderer', () => {
     });
   });
 
+  describe('updateTextVariablesRevision', () => {
+    let variables;
+    beforeEach(() => {
+      variables = {
+        label: 'hello',
+        textColor: [255, 0, 0, 1],
+        fillColor: 'red',
+      };
+      vectorStyleRenderer = new VectorStyleRenderer(
+        {
+          'fill-color': ['var', 'fillColor'],
+          'text-value': ['var', 'label'],
+          'text-fill-color': ['var', 'textColor'],
+        },
+        variables,
+        helper,
+      );
+    });
+
+    it('does not change while text variables keep their values', () => {
+      const revision = vectorStyleRenderer.getTextVariablesRevision();
+      variables.textColor = [255, 0, 0, 1];
+      vectorStyleRenderer.updateTextVariablesRevision();
+      assert.strictEqual(
+        vectorStyleRenderer.getTextVariablesRevision(),
+        revision,
+      );
+    });
+    it('does not change when a variable unused by text changes', () => {
+      const revision = vectorStyleRenderer.getTextVariablesRevision();
+      variables.fillColor = 'blue';
+      vectorStyleRenderer.updateTextVariablesRevision();
+      assert.strictEqual(
+        vectorStyleRenderer.getTextVariablesRevision(),
+        revision,
+      );
+    });
+    it('changes once when a text variable changes', () => {
+      const revision = vectorStyleRenderer.getTextVariablesRevision();
+      variables.label = 'world';
+      vectorStyleRenderer.updateTextVariablesRevision();
+      const newRevision = vectorStyleRenderer.getTextVariablesRevision();
+      assert.notStrictEqual(newRevision, revision);
+      vectorStyleRenderer.updateTextVariablesRevision();
+      assert.strictEqual(
+        vectorStyleRenderer.getTextVariablesRevision(),
+        newRevision,
+      );
+    });
+    it('changes when an array text variable is modified in place', () => {
+      const revision = vectorStyleRenderer.getTextVariablesRevision();
+      variables.textColor[1] = 255;
+      vectorStyleRenderer.updateTextVariablesRevision();
+      assert.notStrictEqual(
+        vectorStyleRenderer.getTextVariablesRevision(),
+        revision,
+      );
+    });
+  });
+
   describe('rendering style containing text and converted to shaders', () => {
     /**
      * @type {import('../../../../../../src/ol/render/webgl/VectorStyleRenderer.js').StyleShaders}
