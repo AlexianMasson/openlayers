@@ -60,6 +60,14 @@ export function hasTextStyle(style) {
 }
 
 /**
+ * @param {string} prop Flat style property name
+ * @return {boolean} Whether the property is relevant to text rendering
+ */
+function isTextProperty(prop) {
+  return prop.startsWith('text-') || prop === 'z-index';
+}
+
+/**
  * @param {import('../../style/flat.js').FlatStyleLike} style Single flat style
  * @return {import('../../style/flat.js').FlatStyleLike} Style with text-related properties only;
  * NOTE: THIS MUTATES THE OBJECT
@@ -69,7 +77,7 @@ export function stripNonTextStyleProperties(style) {
     /** @type {import('../../style/flat.js').FlatStyle} */ style,
   ) {
     for (const prop in style) {
-      if (!prop.startsWith('text-') && prop !== 'z-index') {
+      if (!isTextProperty(prop)) {
         delete (/** @type {Record<string, *>} */ (style)[prop]);
       }
     }
@@ -93,6 +101,55 @@ export function stripNonTextStyleProperties(style) {
   }
   stripStyle(style);
   return style;
+}
+
+/**
+ * @param {import('../../style/flat.js').FlatStyleLike} style Single flat style
+ * @return {Set<string>} Names of the style variables used in text-related properties and rule filters,
+ * i.e. the ones read when building text instructions
+ */
+export function getTextStyleVariables(style) {
+  /** @type {Set<string>} */
+  const names = new Set();
+  function collect(/** @type {*} */ value) {
+    if (!Array.isArray(value)) {
+      return;
+    }
+    if (value[0] === 'var' && typeof value[1] === 'string') {
+      names.add(value[1]);
+    }
+    for (let i = 0, ii = value.length; i < ii; i++) {
+      collect(value[i]);
+    }
+  }
+  function collectStyle(
+    /** @type {import('../../style/flat.js').FlatStyle} */ style,
+  ) {
+    for (const prop in style) {
+      if (isTextProperty(prop)) {
+        collect(/** @type {Record<string, *>} */ (style)[prop]);
+      }
+    }
+  }
+  if (Array.isArray(style)) {
+    for (let i = 0, ii = style.length; i < ii; i++) {
+      const rule = style[i];
+      if ('style' in rule) {
+        collect(rule.filter);
+        const ruleStyles = Array.isArray(rule.style)
+          ? rule.style
+          : [rule.style];
+        for (let j = 0, jj = ruleStyles.length; j < jj; j++) {
+          collectStyle(ruleStyles[j]);
+        }
+      } else {
+        collectStyle(rule);
+      }
+    }
+    return names;
+  }
+  collectStyle(style);
+  return names;
 }
 
 /**

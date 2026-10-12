@@ -23,6 +23,7 @@ import {
   convertPointRenderInstructionsToCanvasTextBuilder,
   convertPolygonRenderInstructionsToCanvasTextBuilder,
   createPostProcessDefinition,
+  getTextStyleVariables,
   hasTextStyle,
   stripNonTextStyleProperties,
   TextUniforms,
@@ -339,6 +340,75 @@ describe('ol/render/webgl/textUtil', function () {
             filter: ['==', ['get', 'id'], ['var', 'highlightedId']],
           },
         ],
+      );
+    });
+  });
+
+  describe('getTextStyleVariables', function () {
+    it('collects variables from text properties and z-index (single style)', function () {
+      assert.deepEqual(
+        Array.from(
+          getTextStyleVariables({
+            'fill-color': ['var', 'fillColor'],
+            'circle-radius': ['var', 'radius'],
+            'text-value': ['concat', ['get', 'name'], ['var', 'suffix']],
+            'text-fill-color': [
+              'case',
+              ['==', ['get', 'id'], ['var', 'highlightedId']],
+              ['var', 'highlightColor'],
+              'black',
+            ],
+            'z-index': ['var', 'zIndex'],
+          }),
+        ),
+        ['suffix', 'highlightedId', 'highlightColor', 'zIndex'],
+      );
+    });
+    it('collects variables from rule filters and styles (style rules)', function () {
+      assert.deepEqual(
+        Array.from(
+          getTextStyleVariables([
+            {
+              style: [
+                {
+                  'fill-color': ['var', 'fillColor'],
+                },
+                {
+                  'text-value': ['get', 'name'],
+                  'text-scale': ['var', 'scale'],
+                },
+              ],
+              filter: ['==', ['get', 'id'], ['var', 'highlightedId']],
+            },
+            {
+              style: {
+                'text-value': ['var', 'label'],
+              },
+              else: true,
+            },
+          ]),
+        ),
+        ['highlightedId', 'scale', 'label'],
+      );
+    });
+    it('collects variables from multiple simple styles', function () {
+      assert.deepEqual(
+        Array.from(
+          getTextStyleVariables([
+            {'stroke-color': ['var', 'strokeColor']},
+            {'text-value': ['var', 'label']},
+          ]),
+        ),
+        ['label'],
+      );
+    });
+    it('returns an empty set when text does not use variables', function () {
+      assert.strictEqual(
+        getTextStyleVariables({
+          'fill-color': ['var', 'fillColor'],
+          'text-value': 'hello',
+        }).size,
+        0,
       );
     });
   });
