@@ -272,8 +272,14 @@ class WebGLVectorTileLayerRenderer extends WebGLBaseTileLayerRenderer {
    * @override
    */
   afterHelperCreated() {
-    this.createRenderers_();
+    if (this.styleRenderer_) {
+      // cached tiles keep using the same style renderer, they are uploaded again with the new helper
+      this.styleRenderer_.setHelper(this.helper);
+    } else {
+      this.createRenderers_();
+    }
     this.initTileMask_();
+    super.afterHelperCreated();
   }
 
   /**
