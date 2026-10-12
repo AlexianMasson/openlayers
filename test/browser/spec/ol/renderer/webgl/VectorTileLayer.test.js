@@ -412,6 +412,29 @@ describe('ol/renderer/webgl/VectorTileLayer', function () {
     });
   });
 
+  describe('helper recreated', () => {
+    let styleRenderer;
+    beforeEach(async () => {
+      renderer.prepareFrame(frameState);
+      renderer.renderFrame(frameState);
+      frameState.tileQueue.loadMoreTiles(Infinity, Infinity);
+      await vi.waitFor(() => {
+        assert.isAbove(renderer.tileRepresentationCache.getCount(), 0);
+      });
+      styleRenderer = renderer.styleRenderer_;
+      renderer.removeHelper();
+      renderer.prepareFrame(frameState);
+    });
+    it('keeps the style renderer', () => {
+      assert.strictEqual(renderer.styleRenderer_, styleRenderer);
+    });
+    it('gives the new helper to the cached tiles', () => {
+      renderer.tileRepresentationCache.forEach((rep) => {
+        assert.strictEqual(rep.helper, renderer.helper);
+      });
+    });
+  });
+
   describe('#renderFrame', () => {
     beforeEach(async () => {
       // prepare renderer and enqueue tiles

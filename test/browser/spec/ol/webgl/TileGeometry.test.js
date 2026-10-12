@@ -151,6 +151,35 @@ describe('ol/webgl/TileGeometry', function () {
       );
     });
 
+    describe('buffers regenerated', () => {
+      let deleteBufferSpy;
+      let previousBuffers;
+      beforeEach(async () => {
+        previousBuffers = {
+          pointBuffers: [{}, {}],
+          polygonBuffers: [{}, {}],
+          textInstructionsKey: 'previous',
+        };
+        styleRenderer.endGenerate_(previousBuffers);
+        await new Promise((resolve) => setTimeout(resolve));
+        deleteBufferSpy = vi.spyOn(helper, 'deleteBuffer');
+        tileGeometry.uploadTile();
+      });
+      it('keeps the previous buffers until the new ones are ready', async () => {
+        assert.strictEqual(tileGeometry.buffers, previousBuffers);
+        assert.strictEqual(deleteBufferSpy.mock.calls.length, 0);
+
+        const newBuffers = {pointBuffers: [{}, {}], textInstructionsKey: 'new'};
+        styleRenderer.endGenerate_(newBuffers);
+        await new Promise((resolve) => setTimeout(resolve));
+        assert.strictEqual(tileGeometry.buffers, newBuffers);
+        assert.strictEqual(deleteBufferSpy.mock.calls.length, 4);
+        assert.deepEqual(styleRenderer.disposeTextInstructions.mock.calls, [
+          ['previous'],
+        ]);
+      });
+    });
+
     describe('#dispose', () => {
       let deleteBufferSpy;
       beforeEach(async () => {

@@ -121,36 +121,49 @@ class TileGeometry extends BaseTileRepresentation {
     this.styleRenderer_
       .generateBuffers(this.batch_, transform, this.wantedResolution)
       .then((buffers) => {
+        // the previous buffers are kept until the new ones are ready, e.g. when the tile is uploaded again
+        if (this.buffers) {
+          this.disposeBuffers_(this.buffers);
+        }
         this.buffers = buffers;
         this.setReady();
       });
   }
 
   /**
+   * @param {import("../render/webgl/VectorStyleRenderer.js").WebGLBuffers} buffers Buffers
+   * @private
+   */
+  disposeBuffers_(buffers) {
+    const helper = this.helper;
+    if (!helper) {
+      return;
+    }
+    /**
+     * @param {Array<WebGLArrayBuffer>} typeBuffers Buffers
+     */
+    const disposeBuffersOfType = (typeBuffers) => {
+      for (const buffer of typeBuffers) {
+        if (buffer) {
+          helper.deleteBuffer(buffer);
+        }
+      }
+    };
+    buffers.pointBuffers && disposeBuffersOfType(buffers.pointBuffers);
+    buffers.lineStringBuffers &&
+      disposeBuffersOfType(buffers.lineStringBuffers);
+    buffers.polygonBuffers && disposeBuffersOfType(buffers.polygonBuffers);
+    this.styleRenderer_.disposeTextInstructions(
+      buffers.textInstructionsKey ?? '',
+    );
+  }
+
+  /**
    * @override
    */
   disposeInternal() {
-    const helper = this.helper;
-    if (this.buffers && helper) {
-      /**
-       * @param {Array<WebGLArrayBuffer>} typeBuffers Buffers
-       */
-      const disposeBuffersOfType = (typeBuffers) => {
-        for (const buffer of typeBuffers) {
-          if (buffer) {
-            helper.deleteBuffer(buffer);
-          }
-        }
-      };
-      this.buffers.pointBuffers &&
-        disposeBuffersOfType(this.buffers.pointBuffers);
-      this.buffers.lineStringBuffers &&
-        disposeBuffersOfType(this.buffers.lineStringBuffers);
-      this.buffers.polygonBuffers &&
-        disposeBuffersOfType(this.buffers.polygonBuffers);
-      this.styleRenderer_.disposeTextInstructions(
-        this.buffers.textInstructionsKey ?? '',
-      );
+    if (this.buffers) {
+      this.disposeBuffers_(this.buffers);
     }
     super.disposeInternal();
   }
