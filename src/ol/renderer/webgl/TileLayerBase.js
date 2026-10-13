@@ -604,6 +604,7 @@ class WebGLBaseTileLayerRenderer extends WebGLLayerRenderer {
   renderFrame(frameState) {
     this.frameState = frameState;
     this.renderComplete = true;
+    this.ready = true;
     const gl = this.helper.getGL();
     this.preRender(gl, frameState);
 
@@ -690,6 +691,9 @@ class WebGLBaseTileLayerRenderer extends WebGLLayerRenderer {
           }
           blend = true;
           alphaLookup[tileCoordKey] = alpha;
+        } else if (tile.getState() === TileState.LOADED) {
+          // the tile is loaded, but its representation is still being built (e.g. vector tile buffers)
+          this.ready = false;
         }
         this.renderComplete = false;
 
